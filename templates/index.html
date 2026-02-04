@@ -53,8 +53,6 @@
         <div class="seg-card__desc">Хочу больше практики и сложных запросов</div>
       </a>
     </div>
-
- 
   </section>
 
 
@@ -89,8 +87,6 @@
         </div>
       </div>
     </div>
-
-   
   </section>
 
 
@@ -111,7 +107,9 @@
         {% endfor %}
       </div>
 
-      <a class="btn primary" href="{{ url_for('task_page', task_id=start_task_id) }}">Начать с первой задачи</a>
+      <a class="btn primary" href="{{ url_for('task_page', task_id=start_task_id) }}">
+        Начать с первой задачи
+      </a>
     {% else %}
       <p class="muted">Пока не нашли задачи уровня Easy. Можно начать с каталога ниже.</p>
     {% endif %}
@@ -125,15 +123,17 @@
     <h2 class="section__title">Все задачи по SQL</h2>
     <p class="muted">Выберите задачу и напишите SQL-запрос прямо в браузере.</p>
 
-    <form class="filter" method="get" action="{{ url_for('index') }}">
+    <!-- 🔧 FIX: keep scroll position after filtering -->
+    <form class="filter" method="get" action="{{ url_for('index') }}#catalog">
       <label>
         Сложность:
         <select name="level" onchange="this.form.submit()">
           <option value="" {% if not selected_level %}selected{% endif %}>Все</option>
 
-          {# LEVELS приходит из app.py через context_processor #}
           {% for lvl in LEVELS %}
-            <option value="{{ lvl }}" {% if selected_level == lvl %}selected{% endif %}>{{ lvl }}</option>
+            <option value="{{ lvl }}" {% if selected_level == lvl %}selected{% endif %}>
+              {{ lvl }}
+            </option>
           {% endfor %}
         </select>
       </label>
@@ -149,7 +149,6 @@
           <div class="task-card__top">
             <h3 class="task-card__title">{{ t.title }}</h3>
 
-            {# t.level = Easy/Medium/Hard/Advanced #}
             <div class="badge-row">
               <span class="badge badge-{{ t.level|lower }}">{{ t.level }}</span>
 
@@ -184,7 +183,9 @@
       <li>✔ Частые темы SQL-собеседований</li>
     </ul>
 
-    <p class="muted">Уже используют для подготовки аналитики и backend-разработчики.</p>
+    <p class="muted">
+      Уже используют для подготовки аналитики и backend-разработчики.
+    </p>
   </section>
 
 
@@ -194,7 +195,9 @@
   <section class="final-cta" aria-label="Начать">
     <h2 class="final-cta__title">Готов попробовать?</h2>
     <p class="muted">Начни решать SQL-задачи прямо сейчас</p>
-    <a class="btn primary" href="{{ url_for('task_page', task_id=start_task_id) }}">🚀 Начать бесплатно</a>
+    <a class="btn primary" href="{{ url_for('task_page', task_id=start_task_id) }}">
+      🚀 Начать бесплатно
+    </a>
   </section>
 
 {% endblock %}

@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% set title = "Лекции" %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Лекции по SQL</h1>
+    <p class="muted page-subtitle">Короткие конспекты с примерами. Выберите уровень сложности и изучайте по порядку.</p>
+  </div>
+
+  <form class="filter" method="get">
+    <label>Сложность:
+      <select name="level" onchange="this.form.submit()">
+        <option value="" {% if not selected_level %}selected{% endif %}>Все</option>
+
+        {# LEVELS приходит из app.py через context_processor #}
+        {% for lvl in LEVELS %}
+          <option value="{{ lvl }}" {% if selected_level == lvl %}selected{% endif %}>{{ lvl }}</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    {% if selected_level %}
+      <a class="btn-link" href="{{ url_for('lectures_index') }}">Сбросить</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="task-list">
+  {% for l in lectures %}
+    <a class="task-card lecture-card" href="{{ url_for('lecture_page', slug=l.slug) }}">
+      <div class="task-card__top">
+        <div class="lecture-card__title">
+          <span class="lecture-card__icon" aria-hidden="true">{{ l.icon }}</span>
+          <h2 class="task-card__title">{{ l.title }}</h2>
+        </div>
+
+        {# IMPORTANT: add level class so colors work #}
+        <span class="badge badge-{{ l.level|lower }}">{{ l.level }}</span>
+      </div>
+
+      <p class="task-card__desc">{{ l.summary }}</p>
+      <div class="lecture-card__cta muted">Открыть лекцию →</div>
+    </a>
+  {% endfor %}
+</div>
+{% endblock %}

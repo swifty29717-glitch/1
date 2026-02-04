@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% set title = "Обучение" %}
+{% block content %}
+<h1>Обучение</h1>
+<form class="filter" method="get">
+  <label>Сложность:
+    <select name="level" onchange="this.form.submit()">
+      <option value="" {% if not selected_level %}selected{% endif %}>Все</option>
+      {% for lvl in levels %}
+        <option value="{{ lvl }}" {% if selected_level == lvl %}selected{% endif %}>{{ lvl }}</option>
+      {% endfor %}
+    </select>
+  </label>
+</form>
+<div class="task-list">
+  {% for l in lessons %}
+    <a class="task-card" href="{{ url_for('learn_lesson', slug=l.slug) }}">
+      <div class="task-card__top">
+        <h2 class="task-card__title">{{ l.title }}</h2>
+        <span class="badge">{{ l.level }}</span>
+      </div>
+      <p class="task-card__desc">{{ l.summary }}</p>
+    </a>
+  {% endfor %}
+</div>
+{% endblock %}

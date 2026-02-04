@@ -1,0 +1,680 @@
+* { box-sizing: border-box; }
+
+/* =========================
+   Theme variables
+   ========================= */
+:root{
+  /* Light theme */
+  --bg: #ffffff;
+  --text: #111111;
+  --muted: #5b6472;
+
+  --panel: #ffffff;
+
+  --border: #e3e6ea;
+  --border-strong: #c7cfe0;
+
+  --link: #2c4b8a;
+
+  --btn-bg: #111827;
+  --btn-text: #ffffff;
+  --btn-border: #111827;
+
+  --btn-secondary-bg: transparent;
+  --btn-secondary-text: #111827;
+
+  /* Default code style (used in lectures) */
+  --code-bg: #f3f4f6;
+  --code-text: #1f2328;
+
+  --thead-bg: #fafafa;
+  --table-border: #ececec;
+
+  --alert-bg: #fff3f3;
+  --alert-border: #ffd0d0;
+  --alert-text: #8a1f1f;
+
+  --flash-bg: #f7f7f7;
+  --flash-border: #e0e0e0;
+
+  --flash-info-bg: #eef6ff;
+  --flash-info-border: #cfe6ff;
+
+  --flash-ok-bg: #eefbf1;
+  --flash-ok-border: #c9f2d2;
+
+  --flash-bad-bg: #fff3f3;
+  --flash-bad-border: #ffd0d0;
+
+  --shadow-card: 0 2px 6px rgba(0,0,0,0.05);
+}
+
+:root[data-theme="dark"]{
+  /* Global dark (lectures already look good with this) */
+  --bg: #0b0f16;
+  --text: #e8eefc;
+  --muted: #a7b0c3;
+
+  --panel: #121826;
+
+  --border: #273044;
+  --border-strong: #3a4661;
+
+  --link: #c8d2ea;
+
+  --btn-bg: #e8eefc;
+  --btn-text: #0b0f16;
+  --btn-border: #3a4661;
+
+  --btn-secondary-bg: transparent;
+  --btn-secondary-text: #e8eefc;
+
+  --code-bg: #0d1117;
+  --code-text: #e6edf3;
+
+  --thead-bg: #0f1523;
+  --table-border: #232c40;
+
+  --alert-bg: #2a0f15;
+  --alert-border: #5a2430;
+  --alert-text: #ffd0d0;
+
+  --flash-bg: #0f1523;
+  --flash-border: #273044;
+
+  --flash-info-bg: #0b1a2a;
+  --flash-info-border: #204462;
+
+  --flash-ok-bg: #0b2414;
+  --flash-ok-border: #1e4b2a;
+
+  --flash-bad-bg: #2a0f15;
+  --flash-bad-border: #5a2430;
+
+  --shadow-card: 0 4px 14px rgba(0,0,0,0.55);
+}
+
+/* =========================
+   Base layout
+   ========================= */
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  line-height: 1.4;
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* Keep your dark background vibe globally (lectures OK) */
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(1200px 600px at 25% -10%, rgba(88, 166, 255, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 85% 0%, rgba(163, 113, 247, 0.08), transparent 55%),
+    var(--bg);
+}
+
+a { color: inherit; text-decoration: none; }
+
+.container { max-width: 980px; margin: 0 auto; padding: 16px; }
+
+.header {
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header__inner { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.logo { font-weight: 700; }
+
+.nav a { margin-left: 12px; color: var(--link); }
+.nav a:hover { text-decoration: underline; }
+
+.footer {
+  border-top: 1px solid var(--border);
+  margin-top: 32px;
+  padding: 16px 0;
+  color: var(--muted);
+}
+
+.muted { color: var(--muted); }
+
+/* =========================
+   Page header (title + filter)
+   ========================= */
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 8px 0 10px;
+}
+
+.page-title { margin: 0; font-size: 40px; letter-spacing: -0.5px; }
+.page-subtitle { margin: 8px 0 0; max-width: 680px; }
+.btn-link { color: var(--link); text-decoration: underline; font-size: 14px; }
+
+/* =========================
+   Filter + tasks list
+   ========================= */
+.filter {
+  margin: 12px 0 16px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter select {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.task-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+/* Card */
+.task-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.task-card:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+}
+
+.task-card__top { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+.task-card__title { margin: 0; font-size: 18px; color: var(--text); }
+.task-card__desc { margin: 10px 0 0; color: var(--muted); }
+
+/* Task page header row */
+.task-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+
+/* Row of small pills (e.g. level + solved/attempted) */
+.badge-row { display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+
+/* =========================
+   Difficulty badge (FIX: different colors)
+   ========================= */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text);
+  background: rgba(127,127,127,0.10);
+  white-space: nowrap;
+}
+
+.badge::before{
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border-strong);
+}
+
+/* Level colors by class from task.html */
+.badge-easy    { border-color: rgba(46, 160, 67, 0.35); background: rgba(46, 160, 67, 0.10); }
+.badge-easy::before { background: #2ea043; }
+
+.badge-medium  { border-color: rgba(245, 158, 11, 0.45); background: rgba(245, 158, 11, 0.14); }
+.badge-medium::before { background: #f59e0b; }
+
+.badge-hard    { border-color: rgba(248, 81, 73, 0.35); background: rgba(248, 81, 73, 0.10); }
+.badge-hard::before { background: #f85149; }
+
+.badge-advanced { border-color: rgba(163, 113, 247, 0.35); background: rgba(163, 113, 247, 0.10); }
+.badge-advanced::before { background: #a371f7; }
+
+/* Status badges */
+.badge-solved { border-color: rgba(46, 160, 67, 0.55); background: rgba(46, 160, 67, 0.18); }
+.badge-solved::before { background: #2ea043; }
+
+.badge-attempted { border-color: rgba(245, 158, 11, 0.55); background: rgba(245, 158, 11, 0.18); }
+.badge-attempted::before { background: #f59e0b; }
+
+/* =========================
+   Code / SQL input
+   ========================= */
+/* Default .code used everywhere */
+.code {
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 12px 14px;
+  border-radius: 10px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ✅ Task page: restore "black" SQL block in LIGHT theme only */
+:root:not([data-theme="dark"]) .task-header ~ .code,
+:root:not([data-theme="dark"]) .task-header ~ h3 + .code,
+:root:not([data-theme="dark"]) .task-header ~ pre.code {
+  background: #0f172a;   /* near-black */
+  color: #e5e7eb;
+  border-color: #0f172a;
+}
+
+/* Ensure inline spacing for code blocks on tasks */
+.task-header ~ pre.code { margin: 10px 0 18px; }
+
+/* SQL form */
+.sql-form textarea {
+  width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+/* =========================
+   Less aggressive dark theme for TASKS ONLY
+   (lectures untouched)
+   ========================= */
+/* We detect task page by presence of .task-header and adjust nearby blocks */
+:root[data-theme="dark"] .task-header ~ p,
+:root[data-theme="dark"] .task-header ~ h3,
+:root[data-theme="dark"] .task-header ~ .muted {
+  color: var(--text);
+}
+
+/* Softer panels around task inputs/results (without changing lecture blocks) */
+:root[data-theme="dark"] .task-header ~ pre.code,
+:root[data-theme="dark"] .task-header ~ .sql-form textarea,
+:root[data-theme="dark"] .task-header ~ .table-wrap {
+  background: #121a2a;                /* softer than near-black */
+  border-color: rgba(255,255,255,0.12);
+}
+
+/* Code blocks on tasks in dark: slightly lighter + less contrast */
+:root[data-theme="dark"] .task-header ~ pre.code {
+  color: #d7deea;
+}
+
+/* Textarea in tasks dark: calm */
+:root[data-theme="dark"] .task-header ~ .sql-form textarea {
+  background: #111a29;
+  color: #e8eefc;
+}
+
+/* Table wrap in tasks dark */
+.table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+:root[data-theme="dark"] .task-header ~ .table-wrap {
+  background: #121a2a;
+}
+
+/* A bit less heavy shadow on task page elements (softer look) */
+:root[data-theme="dark"] .task-header ~ pre.code,
+:root[data-theme="dark"] .task-header ~ .table-wrap,
+:root[data-theme="dark"] .task-header ~ .sql-form textarea {
+  box-shadow: 0 10px 26px rgba(0,0,0,0.28);
+}
+
+/* Form actions */
+.form-actions { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+
+button {
+  padding: 9px 12px;
+  border: 1px solid var(--btn-border);
+  border-radius: 10px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  cursor: pointer;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--btn-secondary-text);
+  border-color: var(--btn-border);
+}
+
+button:hover { opacity: 0.92; }
+
+/* =========================
+   Landing blocks (homepage)
+   ========================= */
+.btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--btn-border);
+  border-radius: 12px;
+  background: var(--btn-bg);
+  color: var(--btn-text);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.btn.secondary{
+  background: transparent;
+  color: var(--btn-secondary-text);
+  border-color: var(--btn-border);
+}
+
+.btn:hover{ opacity: 0.92; }
+
+.hero{
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  padding: 22px;
+  margin: 14px 0 18px;
+}
+
+.hero__inner{ max-width: 820px; }
+
+.hero__title{
+  margin: 0;
+  font-size: 42px;
+  letter-spacing: -0.6px;
+  line-height: 1.12;
+}
+
+.hero__subtitle{ margin: 12px 0 0; color: var(--muted); font-size: 16px; }
+
+.hero__benefits{
+  margin: 14px 0 0;
+  padding-left: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  color: var(--text);
+  list-style: none;
+}
+
+.hero__cta{ margin-top: 16px; display: flex; gap: 10px; flex-wrap: wrap; }
+
+.hero__try{
+  display: inline-block;
+  margin-top: 14px;
+  color: var(--link);
+  text-decoration: underline;
+  font-size: 14px;
+}
+
+.section{ margin: 22px 0; }
+.section__title{ margin: 0 0 10px; font-size: 24px; }
+.section__note{ margin: 10px 0 0; }
+
+.seg-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.seg-card{
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  padding: 14px;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+
+.seg-card:hover{ border-color: var(--border-strong); transform: translateY(-1px); }
+.seg-card__title{ font-weight: 700; }
+.seg-card__desc{ color: var(--muted); margin-top: 6px; }
+
+.how-grid{
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.how-card{
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  padding: 14px;
+  display: flex;
+  gap: 12px;
+}
+
+.how-card__num{ font-size: 18px; }
+.how-card__title{ font-weight: 700; }
+.how-card__desc{ color: var(--muted); margin-top: 4px; }
+
+.rec-list{ display: grid; gap: 10px; margin: 10px 0 14px; }
+
+.rec-item{
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  padding: 12px 14px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.rec-item:hover{ border-color: var(--border-strong); }
+.rec-item__title{ font-weight: 700; }
+.rec-item__arrow{ margin-left: auto; color: var(--muted); }
+
+.checks{
+  margin: 8px 0 0;
+  padding-left: 0;
+  display: grid;
+  gap: 6px;
+  list-style: none;
+}
+
+.final-cta{
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow-card);
+  padding: 18px;
+  margin: 26px 0 10px;
+}
+
+.final-cta__title{ margin: 0 0 8px; }
+
+@media (max-width: 560px){
+  .hero{ padding: 18px; }
+  .hero__title{ font-size: 32px; }
+}
+
+/* =========================
+   Alerts / flash messages
+   ========================= */
+.alert {
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--alert-bg);
+  border: 1px solid var(--alert-border);
+  color: var(--alert-text);
+}
+
+.flash-list { margin: 10px 0; display: grid; gap: 8px; }
+
+.flash {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--flash-border);
+  background: var(--flash-bg);
+  color: var(--text);
+}
+
+.flash--info { border-color: var(--flash-info-border); background: var(--flash-info-bg); }
+.flash--ok   { border-color: var(--flash-ok-border);   background: var(--flash-ok-bg); }
+.flash--bad  { border-color: var(--flash-bad-border);  background: var(--flash-bad-bg); }
+
+/* =========================
+   Tables (general)
+   ========================= */
+table { width: 100%; border-collapse: collapse; }
+
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid var(--table-border);
+  text-align: left;
+  font-size: 14px;
+  color: var(--text);
+}
+
+thead th {
+  background: var(--thead-bg);
+  border-bottom: 1px solid var(--table-border);
+}
+
+/* =========================
+   Lectures (do not "redesign" here)
+   Keep stable / readable as you said OK
+   ========================= */
+.lecture { max-width: 900px; }
+.lecture h1, .lecture h2, .lecture h3 { color: var(--text); }
+.lecture p, .lecture li { color: var(--text); line-height: 1.65; }
+.lecture hr { border: 0; border-top: 1px solid var(--border); margin: 22px 0; }
+
+pre.sql {
+  background: var(--code-bg);
+  color: var(--code-text);
+  padding: 12px 14px;
+  border-radius: 10px;
+  overflow-x: auto;
+  font-size: 14px;
+  line-height: 1.55;
+  margin: 14px 0;
+  border: 1px solid var(--border);
+}
+
+pre.sql code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre;
+}
+
+/* Result block used in some lecture templates */
+.result { margin: 10px 0 18px; }
+.result__title { font-size: 13px; color: var(--muted); margin: 8px 0 6px; }
+.result table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.result th, .result td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--table-border);
+}
+
+/* =========================
+   Theme toggle button
+   ========================= */
+.theme-toggle{
+  margin-left: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.theme-toggle:hover{ opacity: 0.9; }
+
+
+/* =========================
+   Auth forms / header user
+   ========================= */
+.auth-form {
+  max-width: 520px;
+  margin: 18px 0;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel);
+}
+
+.form-row { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+
+.auth-form label { font-weight: 600; }
+
+.auth-form input[type="text"],
+.auth-form input[type="email"],
+.auth-form input[type="password"] {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.nav-user { color: var(--muted); margin-left: 10px; }
+.nav-logout { display: inline; margin: 0 0 0 8px; }
+.nav-logout button { padding: 6px 10px; border-radius: 10px; }
+
+
+/* Progress UI */
+.nav-progress{
+  margin-left: 10px;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.progress-bar{
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.08);
+  overflow: hidden;
+  margin: 10px 0 16px;
+}
+[data-theme="dark"] .progress-bar{
+  background: rgba(255,255,255,0.12);
+}
+.progress-bar__fill{
+  height: 100%;
+  background: rgba(0,0,0,0.35);
+}
+[data-theme="dark"] .progress-bar__fill{
+  background: rgba(255,255,255,0.35);
+}
+
+/* Anchor offset for sticky header */
+:root{ --anchor-offset: 88px; }
+.section{ scroll-margin-top: var(--anchor-offset); }
+
+/* Slightly smaller sticky header on mobile */
+@media (max-width: 768px){
+  :root{ --anchor-offset: 64px; }
+}

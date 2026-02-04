@@ -1,0 +1,8 @@
+
+cloudflared.exe
+
+.venv/
+venv/
+__pycache__/
+*.pyc
+cloudflared.exe

@@ -1,0 +1,580 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="lecture">
+  <h1>JOIN</h1>
+
+  <p>
+    <code>JOIN</code> нужен, чтобы объединять строки из двух (и более) таблиц по условию связи.
+    Обычно условие связи выглядит так: <code>ON a.id = b.a_id</code>.
+  </p>
+
+  <div class="callout callout--note">
+    <div class="callout__title">Что запомнить</div>
+    <p class="muted">
+      В JOIN всегда есть две части: <strong>тип соединения</strong> (INNER/LEFT/...)
+      и <strong>условие ON</strong>. Большинство ошибок — неправильный ON или неправильный тип JOIN.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Пример 1 — INNER JOIN</h2>
+  <p>
+    <code>INNER JOIN</code> возвращает только те строки, где нашлась пара по условию <code>ON</code>.
+    Если пары нет — строка не попадёт в результат.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">users</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td></tr>
+          <tr><td>2</td><td>Bob</td></tr>
+          <tr><td>3</td><td>Carol</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>total</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td>1</td><td>120</td><td>done</td></tr>
+          <tr><td>11</td><td>1</td><td>80</td><td>new</td></tr>
+          <tr><td>12</td><td>2</td><td>50</td><td>done</td></tr>
+          <tr><td>13</td><td>NULL</td><td>70</td><td>new</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT u.name, o.id AS order_id, o.total, o.status
+FROM users u
+JOIN orders o ON o.user_id = u.id
+ORDER BY u.id, o.id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>name</th><th>order_id</th><th>total</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>Alice</td><td>10</td><td>120</td><td>done</td></tr>
+          <tr><td>Alice</td><td>11</td><td>80</td><td>new</td></tr>
+          <tr><td>Bob</td><td>12</td><td>50</td><td>done</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--note">
+    <div class="callout__title">Почему order 13 не попал?</div>
+    <p class="muted">
+      Потому что <code>orders.user_id</code> = <code>NULL</code>, а сравнение <code>NULL = ...</code> никогда не истинно.
+      Совпадения по <code>ON o.user_id = u.id</code> нет.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Пример 2 — LEFT JOIN</h2>
+  <p>
+    <code>LEFT JOIN</code> возвращает <strong>все строки из левой таблицы</strong> и присоединяет совпадения справа.
+    Если совпадений нет — поля справа будут <code>NULL</code>.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">users</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td></tr>
+          <tr><td>2</td><td>Bob</td></tr>
+          <tr><td>3</td><td>Carol</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>total</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td>1</td><td>120</td><td>done</td></tr>
+          <tr><td>11</td><td>1</td><td>80</td><td>new</td></tr>
+          <tr><td>12</td><td>2</td><td>50</td><td>done</td></tr>
+          <tr><td>13</td><td>NULL</td><td>70</td><td>new</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT u.name, o.id AS order_id, o.total
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+ORDER BY u.id, o.id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>name</th><th>order_id</th><th>total</th></tr></thead>
+        <tbody>
+          <tr><td>Alice</td><td>10</td><td>120</td></tr>
+          <tr><td>Alice</td><td>11</td><td>80</td></tr>
+          <tr><td>Bob</td><td>12</td><td>50</td></tr>
+          <tr><td>Carol</td><td>NULL</td><td>NULL</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Пример 3 — ON vs WHERE в LEFT JOIN</h2>
+  <p>
+    Это самая частая ловушка: фильтрация по правой таблице в <code>WHERE</code> “убивает” строки без совпадений.
+  </p>
+
+  <h3>3.1 Условие в WHERE (плохой вариант, если “все слева должны остаться”)</h3>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">users</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td></tr>
+          <tr><td>2</td><td>Bob</td></tr>
+          <tr><td>3</td><td>Carol</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>total</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td>1</td><td>120</td><td>done</td></tr>
+          <tr><td>11</td><td>1</td><td>80</td><td>new</td></tr>
+          <tr><td>12</td><td>2</td><td>50</td><td>done</td></tr>
+          <tr><td>13</td><td>NULL</td><td>70</td><td>new</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT u.name, o.id, o.status
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+WHERE o.status = 'done'
+ORDER BY u.id, o.id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>name</th><th>id</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>Alice</td><td>10</td><td>done</td></tr>
+          <tr><td>Bob</td><td>12</td><td>done</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--warning">
+    <div class="callout__title">⚠ Почему исчезла Carol?</div>
+    <p>
+      У Carol нет заказов → справа поля <code>NULL</code>.
+      Условие <code>o.status = 'done'</code> ложно для <code>NULL</code> → строка отфильтровалась.
+    </p>
+  </div>
+
+  <h3>3.2 Условие в ON (правильный вариант)</h3>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">users</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td></tr>
+          <tr><td>2</td><td>Bob</td></tr>
+          <tr><td>3</td><td>Carol</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>total</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td>1</td><td>120</td><td>done</td></tr>
+          <tr><td>11</td><td>1</td><td>80</td><td>new</td></tr>
+          <tr><td>12</td><td>2</td><td>50</td><td>done</td></tr>
+          <tr><td>13</td><td>NULL</td><td>70</td><td>new</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT u.name, o.id, o.status
+FROM users u
+LEFT JOIN orders o
+  ON o.user_id = u.id
+ AND o.status = 'done'
+ORDER BY u.id, o.id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>name</th><th>id</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>Alice</td><td>10</td><td>done</td></tr>
+          <tr><td>Bob</td><td>12</td><td>done</td></tr>
+          <tr><td>Carol</td><td>NULL</td><td>NULL</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Пример 4 — “все справа” (аналог RIGHT JOIN)</h2>
+  <p>
+    В SQLite проще мыслить так: если нужно “все строки из orders + пользователь, если есть” —
+    просто делай <code>orders</code> левой таблицей в <code>LEFT JOIN</code>.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">users</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td></tr>
+          <tr><td>2</td><td>Bob</td></tr>
+          <tr><td>3</td><td>Carol</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>total</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td>1</td><td>120</td><td>done</td></tr>
+          <tr><td>11</td><td>1</td><td>80</td><td>new</td></tr>
+          <tr><td>12</td><td>2</td><td>50</td><td>done</td></tr>
+          <tr><td>13</td><td>NULL</td><td>70</td><td>new</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT o.id, o.total, u.name
+FROM orders o
+LEFT JOIN users u ON u.id = o.user_id
+ORDER BY o.id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>total</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td>120</td><td>Alice</td></tr>
+          <tr><td>11</td><td>80</td><td>Alice</td></tr>
+          <tr><td>12</td><td>50</td><td>Bob</td></tr>
+          <tr><td>13</td><td>70</td><td>NULL</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Пример 5 — CROSS JOIN</h2>
+  <p>
+    <code>CROSS JOIN</code> соединяет каждую строку A с каждой строкой B (декартово произведение).
+    Используется редко, но важно знать, чтобы случайно не получить огромный результат.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">users</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td></tr>
+          <tr><td>2</td><td>Bob</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="result">
+    <div class="result__title">statuses</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>new</td></tr>
+          <tr><td>done</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT u.name, s.status
+FROM users u
+CROSS JOIN statuses s
+ORDER BY u.id, s.status;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>name</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>Alice</td><td>done</td></tr>
+          <tr><td>Alice</td><td>new</td></tr>
+          <tr><td>Bob</td><td>done</td></tr>
+          <tr><td>Bob</td><td>new</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--warning">
+    <div class="callout__title">⚠ Осторожно</div>
+    <p>
+      При больших таблицах результат растёт как произведение размеров.
+      В тренажёре такие запросы могут сильно грузить сервер.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Пример 6 — JOIN + агрегаты (GROUP BY)</h2>
+  <p class="muted">
+    Частый реальный кейс: посчитать количество заказов и сумму по каждому пользователю.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">users</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td></tr>
+          <tr><td>2</td><td>Bob</td></tr>
+          <tr><td>3</td><td>Carol</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>total</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td>1</td><td>120</td></tr>
+          <tr><td>11</td><td>1</td><td>80</td></tr>
+          <tr><td>12</td><td>2</td><td>50</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  u.name,
+  COUNT(o.id) AS orders_count,
+  COALESCE(SUM(o.total), 0) AS total_sum
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+GROUP BY u.id, u.name
+ORDER BY u.id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>name</th><th>orders_count</th><th>total_sum</th></tr></thead>
+        <tbody>
+          <tr><td>Alice</td><td>2</td><td>200</td></tr>
+          <tr><td>Bob</td><td>1</td><td>50</td></tr>
+          <tr><td>Carol</td><td>0</td><td>0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--tip">
+    <div class="callout__title">💡 Почему COALESCE?</div>
+    <p>
+      Для пользователя без заказов <code>SUM(o.total)</code> будет <code>NULL</code>, поэтому превращаем в 0:
+      <code>COALESCE(SUM(...), 0)</code>.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Пример 7 — Anti-join (найти “без пары”)</h2>
+  <p>
+    Задача: найти пользователей, у которых <strong>нет заказов</strong>.
+    Делается через <code>LEFT JOIN</code> и проверку <code>IS NULL</code> по ключу правой таблицы.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">users</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>name</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td></tr>
+          <tr><td>2</td><td>Bob</td></tr>
+          <tr><td>3</td><td>Carol</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>total</th></tr></thead>
+        <tbody>
+          <tr><td>10</td><td>1</td><td>120</td></tr>
+          <tr><td>11</td><td>1</td><td>80</td></tr>
+          <tr><td>12</td><td>2</td><td>50</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT u.name
+FROM users u
+LEFT JOIN orders o ON o.user_id = u.id
+WHERE o.id IS NULL;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>name</th></tr></thead>
+        <tbody>
+          <tr><td>Carol</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Пример 8 — Self JOIN (таблица соединяется сама с собой)</h2>
+  <p class="muted">
+    Полезно для иерархий: сотрудники и их менеджеры.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">employees</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>name</th><th>manager_id</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td><td>NULL</td></tr>
+          <tr><td>2</td><td>Bob</td><td>1</td></tr>
+          <tr><td>3</td><td>Carol</td><td>1</td></tr>
+          <tr><td>4</td><td>Dave</td><td>2</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT e.name AS employee, m.name AS manager
+FROM employees e
+LEFT JOIN employees m ON m.id = e.manager_id
+ORDER BY e.id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>employee</th><th>manager</th></tr></thead>
+        <tbody>
+          <tr><td>Alice</td><td>NULL</td></tr>
+          <tr><td>Bob</td><td>Alice</td></tr>
+          <tr><td>Carol</td><td>Alice</td></tr>
+          <tr><td>Dave</td><td>Bob</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Частые ошибки при JOIN</h2>
+  <div class="callout callout--warning">
+    <div class="callout__title">⚠ Ошибки новичков</div>
+    <ul class="mistakes">
+      <li><strong>Неправильное условие связи</strong> (<code>ON</code> не по ключам) → “лишние” строки или пустой результат.</li>
+      <li><strong>Забыть алиасы</strong> при одинаковых названиях столбцов → непонятно, из какой таблицы поле.</li>
+      <li><strong>Фильтровать правую таблицу через WHERE</strong> при <code>LEFT JOIN</code> → превращение в INNER JOIN.</li>
+      <li><strong>Случайный CROSS JOIN</strong> → взрыв количества строк и тормоза.</li>
+      <li><strong>Дубликаты при JOIN</strong>: если справа несколько строк на одну слева — строк станет больше (это не баг).</li>
+    </ul>
+  </div>
+
+  <hr>
+
+  <h2>Итого</h2>
+  <ul>
+    <li><code>INNER JOIN</code> — только совпавшие пары.</li>
+    <li><code>LEFT JOIN</code> — все строки слева + совпадения справа (или NULL).</li>
+    <li>В <code>LEFT JOIN</code> условия на правую таблицу часто надо писать в <code>ON</code>, а не в <code>WHERE</code>.</li>
+    <li>JOIN отлично сочетается с агрегатами (<code>GROUP BY</code>).</li>
+    <li>Anti-join: <code>LEFT JOIN</code> + <code>WHERE right.id IS NULL</code> → “найти без пары”.</li>
+  </ul>
+</div>
+{% endblock %}

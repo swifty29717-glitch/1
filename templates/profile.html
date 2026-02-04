@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% set title = "Профиль" %}
+
+{% block content %}
+  <h1>Профиль</h1>
+
+  <p class="muted">
+    Пользователь: <strong>{{ current_user.login }}</strong> ·
+    Решено: <strong>{{ solved }}</strong>/<strong>{{ total }}</strong> ({{ percent }}%) ·
+    С попытками: <strong>{{ attempted }}</strong>
+  </p>
+
+  <div class="progress-bar" aria-label="Прогресс">
+    <div class="progress-bar__fill" style="width: {{ percent }}%"></div>
+  </div>
+
+  <div class="table-wrap" style="margin-top: 12px;">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Задача</th>
+          <th>Сложность</th>
+          <th>Статус</th>
+          <th>Попытки</th>
+          <th>Последняя</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tasks %}
+          {% set p = progress_map.get(t.id) if progress_map else None %}
+          <tr>
+            <td>{{ t.id }}</td>
+            <td><a href="{{ url_for('task_page', task_id=t.id) }}">{{ t.title }}</a></td>
+            <td><span class="badge badge-{{ t.level|lower }}">{{ t.level }}</span></td>
+            <td>
+              {% if p and p.solved %}
+                <span class="badge badge-solved">Solved</span>
+              {% elif p %}
+                <span class="badge badge-attempted">Tried</span>
+              {% else %}
+                <span class="muted">—</span>
+              {% endif %}
+            </td>
+            <td>{{ p.attempts if p else 0 }}</td>
+            <td class="muted">{{ p.last_attempt_at if p and p.last_attempt_at else "" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="muted" style="margin-top: 10px;">
+    Подсказка: прогресс сохраняется, когда вы отправляете запрос на странице задачи.
+  </p>
+{% endblock %}

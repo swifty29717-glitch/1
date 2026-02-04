@@ -1,0 +1,922 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="lecture">
+  <h1>Оконные функции в PostgreSQL</h1>
+
+  <p>
+    Оконные функции (window functions) позволяют вычислять значения “по группе строк”,
+    <strong>не схлопывая</strong> результат, как это делает <code>GROUP BY</code>.
+    То есть каждая строка остаётся на месте, а ты получаешь дополнительные вычисленные колонки:
+    ранги, накопительные суммы, значения “предыдущей строки”, доли и т.д.
+  </p>
+
+  <div class="callout callout--note">
+    <div class="callout__title">Главное отличие от GROUP BY</div>
+    <p class="muted">
+      <code>GROUP BY</code> делает по одной строке на группу.<br>
+      Окна сохраняют все строки, но считают “внутри окна” для каждой строки.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Синтаксис OVER</h2>
+  <p>
+    Почти любая оконная функция выглядит так:
+  </p>
+
+  <pre class="sql"><code>func(...) OVER (
+  PARTITION BY ...
+  ORDER BY ...
+  ROWS/RANGE BETWEEN ...
+)</code></pre>
+
+  <ul>
+    <li><code>PARTITION BY</code> — “разделить” строки на группы (как мини-<code>GROUP BY</code>, но без схлопывания)</li>
+    <li><code>ORDER BY</code> — порядок строк внутри каждой группы</li>
+    <li><code>ROWS/RANGE ...</code> — рамка окна (frame): какие строки участвуют в вычислении для текущей строки</li>
+  </ul>
+
+  <div class="callout callout--tip">
+    <div class="callout__title">💡 Запоминалка</div>
+    <p>
+      <code>PARTITION BY</code> — “по каким группам считаем”, <code>ORDER BY</code> — “в каком порядке внутри группы”,
+      рамка — “какие строки берём”.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Пример 1 — SUM(...) OVER(PARTITION BY ...) (итог по группе без GROUP BY)</h2>
+  <p>
+    Посчитаем сумму зарплат по отделу, но оставим строки сотрудников.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">employees</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>id</th><th>name</th><th>department</th><th>salary</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td><td>Sales</td><td>1200</td></tr>
+          <tr><td>2</td><td>Bob</td><td>Sales</td><td>900</td></tr>
+          <tr><td>3</td><td>Carol</td><td>IT</td><td>1400</td></tr>
+          <tr><td>4</td><td>Dave</td><td>IT</td><td>1300</td></tr>
+          <tr><td>5</td><td>Eve</td><td>HR</td><td>900</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  id,
+  name,
+  department,
+  salary,
+  SUM(salary) OVER (PARTITION BY department) AS dept_total_salary
+FROM employees
+ORDER BY department, salary DESC;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>id</th><th>name</th><th>department</th><th>salary</th><th>dept_total_salary</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>5</td><td>Eve</td><td>HR</td><td>900</td><td>900</td></tr>
+          <tr><td>3</td><td>Carol</td><td>IT</td><td>1400</td><td>2700</td></tr>
+          <tr><td>4</td><td>Dave</td><td>IT</td><td>1300</td><td>2700</td></tr>
+          <tr><td>1</td><td>Alice</td><td>Sales</td><td>1200</td><td>2100</td></tr>
+          <tr><td>2</td><td>Bob</td><td>Sales</td><td>900</td><td>2100</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--note">
+    <div class="callout__title">Чем это отличается от GROUP BY?</div>
+    <p class="muted">
+      С <code>GROUP BY department</code> ты получил бы 3 строки (по отделам).
+      Здесь ты получил 5 строк (по сотрудникам), но с доп. колонкой “сумма по отделу”.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Пример 2 — ROW_NUMBER, RANK, DENSE_RANK</h2>
+  <p>
+    Эти функции помогают нумеровать строки и строить рейтинги.
+  </p>
+
+  <ul>
+    <li><code>ROW_NUMBER()</code> — уникальный номер строки внутри группы (1,2,3...)</li>
+    <li><code>RANK()</code> — рейтинг с “дырками” при равенстве (1,1,3...)</li>
+    <li><code>DENSE_RANK()</code> — рейтинг без “дырок” (1,1,2...)</li>
+  </ul>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">employees</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>id</th><th>name</th><th>department</th><th>salary</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td><td>Sales</td><td>1200</td></tr>
+          <tr><td>2</td><td>Bob</td><td>Sales</td><td>1200</td></tr>
+          <tr><td>3</td><td>Carol</td><td>Sales</td><td>900</td></tr>
+          <tr><td>4</td><td>Dave</td><td>IT</td><td>1400</td></tr>
+          <tr><td>5</td><td>Eve</td><td>IT</td><td>1300</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  department,
+  name,
+  salary,
+  ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC, id) AS row_number,
+  RANK()       OVER (PARTITION BY department ORDER BY salary DESC) AS rank,
+  DENSE_RANK() OVER (PARTITION BY department ORDER BY salary DESC) AS dense_rank
+FROM employees
+ORDER BY department, salary DESC, name;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>department</th><th>name</th><th>salary</th><th>row_number</th><th>rank</th><th>dense_rank</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>IT</td><td>Dave</td><td>1400</td><td>1</td><td>1</td><td>1</td></tr>
+          <tr><td>IT</td><td>Eve</td><td>1300</td><td>2</td><td>2</td><td>2</td></tr>
+          <tr><td>Sales</td><td>Alice</td><td>1200</td><td>1</td><td>1</td><td>1</td></tr>
+          <tr><td>Sales</td><td>Bob</td><td>1200</td><td>2</td><td>1</td><td>1</td></tr>
+          <tr><td>Sales</td><td>Carol</td><td>900</td><td>3</td><td>3</td><td>2</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--tip">
+    <div class="callout__title">💡 Топ-N по группе</div>
+    <p class="muted">
+      Частая задача: “взять топ-2 сотрудников по зарплате в каждом отделе”.
+      Обычно это делается через подзапрос/CTE с <code>ROW_NUMBER()</code> и фильтрацию по нему.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Пример 3 — топ-2 в каждой группе (ROW_NUMBER + подзапрос)</h2>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">employees</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>id</th><th>name</th><th>department</th><th>salary</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td><td>Sales</td><td>1200</td></tr>
+          <tr><td>2</td><td>Bob</td><td>Sales</td><td>1100</td></tr>
+          <tr><td>3</td><td>Carol</td><td>Sales</td><td>900</td></tr>
+          <tr><td>4</td><td>Dave</td><td>IT</td><td>1400</td></tr>
+          <tr><td>5</td><td>Eve</td><td>IT</td><td>1300</td></tr>
+          <tr><td>6</td><td>Mallory</td><td>IT</td><td>800</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT department, name, salary
+FROM (
+  SELECT
+    department,
+    name,
+    salary,
+    ROW_NUMBER() OVER (PARTITION BY department ORDER BY salary DESC, id) AS rn
+  FROM employees
+) t
+WHERE rn &lt;= 2
+ORDER BY department, salary DESC;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат (топ-2 по зарплате в каждом отделе):</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>department</th><th>name</th><th>salary</th></tr></thead>
+        <tbody>
+          <tr><td>IT</td><td>Dave</td><td>1400</td></tr>
+          <tr><td>IT</td><td>Eve</td><td>1300</td></tr>
+          <tr><td>Sales</td><td>Alice</td><td>1200</td></tr>
+          <tr><td>Sales</td><td>Bob</td><td>1100</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Пример 4 — LAG и LEAD (предыдущее/следующее значение)</h2>
+  <p>
+    <code>LAG</code> и <code>LEAD</code> позволяют “заглянуть” на предыдущую/следующую строку внутри окна.
+    Это удобно для расчёта изменений (дельт), трендов, сравнения с предыдущей покупкой и т.д.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">sales</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>day</th><th>amount</th></tr></thead>
+        <tbody>
+          <tr><td>2026-01-01</td><td>100</td></tr>
+          <tr><td>2026-01-02</td><td>130</td></tr>
+          <tr><td>2026-01-03</td><td>90</td></tr>
+          <tr><td>2026-01-04</td><td>160</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  day,
+  amount,
+  LAG(amount)  OVER (ORDER BY day) AS prev_amount,
+  amount - LAG(amount) OVER (ORDER BY day) AS delta_from_prev,
+  LEAD(amount) OVER (ORDER BY day) AS next_amount
+FROM sales
+ORDER BY day;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>day</th><th>amount</th><th>prev_amount</th><th>delta_from_prev</th><th>next_amount</th></tr></thead>
+        <tbody>
+          <tr><td>2026-01-01</td><td>100</td><td>NULL</td><td>NULL</td><td>130</td></tr>
+          <tr><td>2026-01-02</td><td>130</td><td>100</td><td>30</td><td>90</td></tr>
+          <tr><td>2026-01-03</td><td>90</td><td>130</td><td>-40</td><td>160</td></tr>
+          <tr><td>2026-01-04</td><td>160</td><td>90</td><td>70</td><td>NULL</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--tip">
+    <div class="callout__title">💡 Параметр default</div>
+    <p class="muted">
+      У <code>LAG</code>/<code>LEAD</code> есть третий параметр — значение по умолчанию:
+      <code>LEAD(amount, 1, 0)</code> вернёт 0, если следующей строки нет.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Пример 5 — скользящая сумма (running total)</h2>
+  <p>
+    Скользящая сумма — это сумма “с начала до текущей строки”.
+  </p>
+
+  <div class="callout callout--note">
+    <div class="callout__title">Нюанс PostgreSQL: RANGE vs ROWS</div>
+    <p class="muted">
+      Если у окна есть <code>ORDER BY</code>, то в PostgreSQL рамка по умолчанию обычно:
+      <code>RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW</code>.
+      При повторяющихся значениях это может считать “скачками”.
+      Для учебных задач и предсказуемости чаще явно пишут <code>ROWS</code>.
+    </p>
+  </div>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">sales</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>day</th><th>amount</th></tr></thead>
+        <tbody>
+          <tr><td>2026-01-01</td><td>100</td></tr>
+          <tr><td>2026-01-02</td><td>130</td></tr>
+          <tr><td>2026-01-03</td><td>90</td></tr>
+          <tr><td>2026-01-04</td><td>160</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  day,
+  amount,
+  SUM(amount) OVER (
+    ORDER BY day
+    ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+  ) AS running_sum
+FROM sales
+ORDER BY day;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>day</th><th>amount</th><th>running_sum</th></tr></thead>
+        <tbody>
+          <tr><td>2026-01-01</td><td>100</td><td>100</td></tr>
+          <tr><td>2026-01-02</td><td>130</td><td>230</td></tr>
+          <tr><td>2026-01-03</td><td>90</td><td>320</td></tr>
+          <tr><td>2026-01-04</td><td>160</td><td>480</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Пример 6 — скользящее среднее (moving average) за 3 строки</h2>
+  <p>
+    Оконная рамка позволяет брать “окрестность” строки: например текущая и две предыдущих.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">sales</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>day</th><th>amount</th></tr></thead>
+        <tbody>
+          <tr><td>2026-01-01</td><td>100</td></tr>
+          <tr><td>2026-01-02</td><td>130</td></tr>
+          <tr><td>2026-01-03</td><td>90</td></tr>
+          <tr><td>2026-01-04</td><td>160</td></tr>
+          <tr><td>2026-01-05</td><td>110</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  day,
+  amount,
+  ROUND(
+    AVG(amount) OVER (
+      ORDER BY day
+      ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+    ),
+    2
+  ) AS moving_avg_3
+FROM sales
+ORDER BY day;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>day</th><th>amount</th><th>moving_avg_3</th></tr></thead>
+        <tbody>
+          <tr><td>2026-01-01</td><td>100</td><td>100.00</td></tr>
+          <tr><td>2026-01-02</td><td>130</td><td>115.00</td></tr>
+          <tr><td>2026-01-03</td><td>90</td><td>106.67</td></tr>
+          <tr><td>2026-01-04</td><td>160</td><td>126.67</td></tr>
+          <tr><td>2026-01-05</td><td>110</td><td>120.00</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Пример 7 — среднее по группе + сравнение с ним</h2>
+  <p>
+    Сравним зарплату сотрудника со средней по отделу.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">employees</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>name</th><th>department</th><th>salary</th></tr></thead>
+        <tbody>
+          <tr><td>Alice</td><td>Sales</td><td>1200</td></tr>
+          <tr><td>Bob</td><td>Sales</td><td>900</td></tr>
+          <tr><td>Carol</td><td>Sales</td><td>1100</td></tr>
+          <tr><td>Dave</td><td>IT</td><td>1400</td></tr>
+          <tr><td>Eve</td><td>IT</td><td>1300</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  department,
+  name,
+  salary,
+  ROUND(AVG(salary) OVER (PARTITION BY department), 2) AS dept_avg_salary,
+  ROUND(salary - AVG(salary) OVER (PARTITION BY department), 2) AS diff_from_avg
+FROM employees
+ORDER BY department, salary DESC;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>department</th><th>name</th><th>salary</th><th>dept_avg_salary</th><th>diff_from_avg</th></tr></thead>
+        <tbody>
+          <tr><td>IT</td><td>Dave</td><td>1400</td><td>1350.00</td><td>50.00</td></tr>
+          <tr><td>IT</td><td>Eve</td><td>1300</td><td>1350.00</td><td>-50.00</td></tr>
+          <tr><td>Sales</td><td>Alice</td><td>1200</td><td>1066.67</td><td>133.33</td></tr>
+          <tr><td>Sales</td><td>Carol</td><td>1100</td><td>1066.67</td><td>33.33</td></tr>
+          <tr><td>Sales</td><td>Bob</td><td>900</td><td>1066.67</td><td>-166.67</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Пример 8 — FIRST_VALUE и LAST_VALUE (нюанс рамки!)</h2>
+  <p>
+    <code>FIRST_VALUE</code> и <code>LAST_VALUE</code> возвращают первое/последнее значение в окне.
+    В PostgreSQL есть тонкость: <code>LAST_VALUE</code> зависит от рамки окна.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">prices</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>day</th><th>price</th></tr></thead>
+        <tbody>
+          <tr><td>2026-01-01</td><td>10</td></tr>
+          <tr><td>2026-01-02</td><td>12</td></tr>
+          <tr><td>2026-01-03</td><td>11</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  day,
+  price,
+  FIRST_VALUE(price) OVER (ORDER BY day) AS first_price,
+  -- Без явной рамки last_value часто становится "текущим" значением
+  LAST_VALUE(price) OVER (ORDER BY day) AS last_value_default_frame,
+  -- Правильный "последний в полном окне":
+  LAST_VALUE(price) OVER (
+    ORDER BY day
+    ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+  ) AS last_price_full_window
+FROM prices
+ORDER BY day;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>day</th><th>price</th><th>first_price</th><th>last_value_default_frame</th><th>last_price_full_window</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>2026-01-01</td><td>10</td><td>10</td><td>10</td><td>11</td></tr>
+          <tr><td>2026-01-02</td><td>12</td><td>10</td><td>12</td><td>11</td></tr>
+          <tr><td>2026-01-03</td><td>11</td><td>10</td><td>11</td><td>11</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--tip">
+    <div class="callout__title">💡 Вывод</div>
+    <p class="muted">
+      Если используешь <code>LAST_VALUE</code> и хочешь “последнее значение всей группы” —
+      почти всегда явно задавай рамку до <code>UNBOUNDED FOLLOWING</code>.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Пример 9 — доля в сумме (процент от итога)</h2>
+  <p>
+    “Какую долю от суммы по отделу составляет зарплата сотрудника?”
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">employees</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>name</th><th>department</th><th>salary</th></tr></thead>
+        <tbody>
+          <tr><td>Alice</td><td>Sales</td><td>1200</td></tr>
+          <tr><td>Bob</td><td>Sales</td><td>900</td></tr>
+          <tr><td>Carol</td><td>IT</td><td>1400</td></tr>
+          <tr><td>Dave</td><td>IT</td><td>1300</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  department,
+  name,
+  salary,
+  SUM(salary) OVER (PARTITION BY department) AS dept_total,
+  ROUND(
+    salary::numeric / SUM(salary) OVER (PARTITION BY department) * 100,
+    2
+  ) AS pct_of_dept
+FROM employees
+ORDER BY department, salary DESC;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>department</th><th>name</th><th>salary</th><th>dept_total</th><th>pct_of_dept</th></tr></thead>
+        <tbody>
+          <tr><td>IT</td><td>Carol</td><td>1400</td><td>2700</td><td>51.85</td></tr>
+          <tr><td>IT</td><td>Dave</td><td>1300</td><td>2700</td><td>48.15</td></tr>
+          <tr><td>Sales</td><td>Alice</td><td>1200</td><td>2100</td><td>57.14</td></tr>
+          <tr><td>Sales</td><td>Bob</td><td>900</td><td>2100</td><td>42.86</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--note">
+    <div class="callout__title">Зачем salary::numeric?</div>
+    <p class="muted">
+      В PostgreSQL целочисленное деление может привести к потере дробной части.
+      Каст к <code>numeric</code> даёт корректную математику.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Именованные окна (WINDOW) — меньше копипасты</h2>
+  <p>
+    В PostgreSQL можно объявить окно один раз через <code>WINDOW</code> и переиспользовать его.
+  </p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">employees</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>name</th><th>department</th><th>salary</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>Alice</td><td>Sales</td><td>1200</td></tr>
+          <tr><td>2</td><td>Bob</td><td>Sales</td><td>900</td></tr>
+          <tr><td>3</td><td>Carol</td><td>IT</td><td>1400</td></tr>
+          <tr><td>4</td><td>Dave</td><td>IT</td><td>1300</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  department,
+  name,
+  salary,
+  SUM(salary) OVER w AS dept_total,
+  ROW_NUMBER() OVER w_ordered AS rn_in_dept
+FROM employees
+WINDOW
+  w AS (PARTITION BY department),
+  w_ordered AS (PARTITION BY department ORDER BY salary DESC, id)
+ORDER BY department, salary DESC;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>department</th><th>name</th><th>salary</th><th>dept_total</th><th>rn_in_dept</th></tr></thead>
+        <tbody>
+          <tr><td>IT</td><td>Carol</td><td>1400</td><td>2700</td><td>1</td></tr>
+          <tr><td>IT</td><td>Dave</td><td>1300</td><td>2700</td><td>2</td></tr>
+          <tr><td>Sales</td><td>Alice</td><td>1200</td><td>2100</td><td>1</td></tr>
+          <tr><td>Sales</td><td>Bob</td><td>900</td><td>2100</td><td>2</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>FILTER и оконные функции</h2>
+  <p>
+    В PostgreSQL <code>FILTER</code> применяется к <strong>агрегатным функциям</strong> и позволяет учитывать
+    в агрегате только строки, удовлетворяющие условию.
+    И это работает и для оконных агрегатов:
+  </p>
+
+  <pre class="sql"><code>SUM(total) FILTER (WHERE status = 'done')
+OVER (PARTITION BY user_id)</code></pre>
+
+  <div class="callout callout--note">
+    <div class="callout__title">Важно</div>
+    <p class="muted">
+      <code>FILTER</code> не применяется к <code>ROW_NUMBER</code>, <code>RANK</code>, <code>LAG</code>/<code>LEAD</code> —
+      потому что они не агрегируют строки.
+      Но он отлично работает с <code>SUM/COUNT/AVG/MIN/MAX</code> + <code>OVER</code>.
+    </p>
+  </div>
+
+  <hr>
+
+  <h3>Пример 10 — SUM(...) FILTER (...) OVER (...) (сумма “done” и сумма “всего” одновременно)</h3>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>status</th><th>total</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>1</td><td>done</td><td>100</td></tr>
+          <tr><td>2</td><td>1</td><td>new</td><td>50</td></tr>
+          <tr><td>3</td><td>1</td><td>done</td><td>70</td></tr>
+          <tr><td>4</td><td>2</td><td>new</td><td>40</td></tr>
+          <tr><td>5</td><td>2</td><td>done</td><td>60</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  id,
+  user_id,
+  status,
+  total,
+  SUM(total) OVER (PARTITION BY user_id) AS total_sum,
+  SUM(total) FILTER (WHERE status = 'done')
+    OVER (PARTITION BY user_id) AS done_sum
+FROM orders
+ORDER BY user_id, id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>id</th><th>user_id</th><th>status</th><th>total</th><th>total_sum</th><th>done_sum</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>1</td><td>done</td><td>100</td><td>220</td><td>170</td></tr>
+          <tr><td>2</td><td>1</td><td>new</td><td>50</td><td>220</td><td>170</td></tr>
+          <tr><td>3</td><td>1</td><td>done</td><td>70</td><td>220</td><td>170</td></tr>
+          <tr><td>4</td><td>2</td><td>new</td><td>40</td><td>100</td><td>60</td></tr>
+          <tr><td>5</td><td>2</td><td>done</td><td>60</td><td>100</td><td>60</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--tip">
+    <div class="callout__title">💡 Почему это круто</div>
+    <p class="muted">
+      Без <code>FILTER</code> пришлось бы писать <code>SUM(CASE WHEN ... THEN ... END) OVER (...)</code>.
+      С <code>FILTER</code> запрос короче и читаемее.
+    </p>
+  </div>
+
+  <hr>
+
+  <h3>Пример 11 — COUNT(*) FILTER (...) OVER (...) (счётчики разных статусов)</h3>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>status</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>1</td><td>done</td></tr>
+          <tr><td>2</td><td>1</td><td>new</td></tr>
+          <tr><td>3</td><td>1</td><td>done</td></tr>
+          <tr><td>4</td><td>2</td><td>new</td></tr>
+          <tr><td>5</td><td>2</td><td>done</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  id,
+  user_id,
+  status,
+  COUNT(*) OVER (PARTITION BY user_id) AS orders_total,
+  COUNT(*) FILTER (WHERE status = 'done') OVER (PARTITION BY user_id) AS orders_done,
+  COUNT(*) FILTER (WHERE status = 'new')  OVER (PARTITION BY user_id) AS orders_new
+FROM orders
+ORDER BY user_id, id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>id</th><th>user_id</th><th>status</th><th>orders_total</th><th>orders_done</th><th>orders_new</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>1</td><td>done</td><td>3</td><td>2</td><td>1</td></tr>
+          <tr><td>2</td><td>1</td><td>new</td><td>3</td><td>2</td><td>1</td></tr>
+          <tr><td>3</td><td>1</td><td>done</td><td>3</td><td>2</td><td>1</td></tr>
+          <tr><td>4</td><td>2</td><td>new</td><td>2</td><td>1</td><td>1</td></tr>
+          <tr><td>5</td><td>2</td><td>done</td><td>2</td><td>1</td><td>1</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h3>Пример 12 — FILTER + running total (накопительная сумма только “done”)</h3>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>status</th><th>total</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>1</td><td>done</td><td>100</td></tr>
+          <tr><td>2</td><td>1</td><td>new</td><td>50</td></tr>
+          <tr><td>3</td><td>1</td><td>done</td><td>70</td></tr>
+          <tr><td>4</td><td>1</td><td>done</td><td>30</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос:</p>
+  <pre class="sql"><code>SELECT
+  id,
+  status,
+  total,
+  SUM(total) FILTER (WHERE status = 'done')
+    OVER (
+      PARTITION BY user_id
+      ORDER BY id
+      ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS running_done_sum
+FROM orders
+ORDER BY id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>status</th><th>total</th><th>running_done_sum</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>done</td><td>100</td><td>100</td></tr>
+          <tr><td>2</td><td>new</td><td>50</td><td>100</td></tr>
+          <tr><td>3</td><td>done</td><td>70</td><td>170</td></tr>
+          <tr><td>4</td><td>done</td><td>30</td><td>200</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--note">
+    <div class="callout__title">Почему строка new тоже показывает running_done_sum?</div>
+    <p class="muted">
+      Потому что <code>FILTER</code> влияет только на агрегат, а строки результата не фильтрует.
+      Поэтому “new” строка тоже отображает накопленную сумму done на текущий момент.
+    </p>
+  </div>
+
+  <hr>
+
+  <h3>Пример 13 — FILTER vs PARTITION BY (частая путаница)</h3>
+  <p>
+    Эти конструкции выглядят похоже, но делают разное:
+  </p>
+
+  <pre class="sql"><code>-- 1) FILTER: окно по user_id, но агрегат считает только done
+SUM(total) FILTER (WHERE status = 'done')
+OVER (PARTITION BY user_id)
+
+-- 2) PARTITION BY user_id, status: создаём отдельные окна для done и new
+SUM(total)
+OVER (PARTITION BY user_id, status)</code></pre>
+
+  <p class="muted">Покажем разницу на примере.</p>
+
+  <p class="muted">Данные:</p>
+  <div class="result">
+    <div class="result__title">orders</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>id</th><th>user_id</th><th>status</th><th>total</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>1</td><td>done</td><td>100</td></tr>
+          <tr><td>2</td><td>1</td><td>new</td><td>50</td></tr>
+          <tr><td>3</td><td>1</td><td>done</td><td>70</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <p class="muted">Запрос (оба варианта рядом):</p>
+  <pre class="sql"><code>SELECT
+  id,
+  status,
+  total,
+  SUM(total) FILTER (WHERE status = 'done') OVER (PARTITION BY user_id) AS done_sum_filter,
+  SUM(total) OVER (PARTITION BY user_id, status) AS sum_by_status_partition
+FROM orders
+ORDER BY id;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Результат:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>id</th><th>status</th><th>total</th><th>done_sum_filter</th><th>sum_by_status_partition</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>done</td><td>100</td><td>170</td><td>170</td></tr>
+          <tr><td>2</td><td>new</td><td>50</td><td>170</td><td>50</td></tr>
+          <tr><td>3</td><td>done</td><td>70</td><td>170</td><td>170</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--warning">
+    <div class="callout__title">Вывод</div>
+    <p class="muted">
+      <strong>FILTER</strong> — “фильтруем строки внутри агрегата”.<br>
+      <strong>PARTITION BY ... , status</strong> — “создаём разные окна для разных статусов”.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Частые ошибки и нюансы</h2>
+  <div class="callout callout--warning">
+    <div class="callout__title">⚠ Ошибки новичков</div>
+    <ul class="mistakes">
+      <li>
+        Пытаться использовать <code>FILTER</code> с <code>ROW_NUMBER()</code>/<code>LAG()</code> — нельзя (они не агрегаты).
+      </li>
+      <li>
+        Фильтровать по оконной колонке прямо в <code>WHERE</code> — нужен подзапрос/CTE.
+      </li>
+      <li>
+        Забывать стабильный порядок в ранжировании (добавляй <code>id</code> как tie-breaker).
+      </li>
+      <li>
+        Не понимать разницу между <code>ROWS</code> и <code>RANGE</code> — для учебных примеров чаще явно задаём <code>ROWS</code>.
+      </li>
+    </ul>
+  </div>
+
+  <div class="callout callout--tip">
+    <div class="callout__title">💡 Практический шаблон</div>
+    <p class="muted">
+      “Сначала посчитай окно, потом фильтруй”:
+    </p>
+    <pre class="sql"><code>SELECT *
+FROM (
+  SELECT ..., ROW_NUMBER() OVER (...) AS rn
+  FROM ...
+) t
+WHERE rn &lt;= 3;</code></pre>
+  </div>
+
+  <hr>
+
+  <h2>Итого</h2>
+  <ul>
+    <li>Окна сохраняют строки и добавляют вычисления “по группе/порядку”.</li>
+    <li><code>PARTITION BY</code> — группы, <code>ORDER BY</code> — порядок, рамка — какие строки участвуют.</li>
+    <li>Ключевые функции: <code>SUM/AVG OVER</code>, <code>ROW_NUMBER/RANK</code>, <code>LAG/LEAD</code>, running totals, moving averages.</li>
+    <li><code>FILTER</code> работает с агрегатами, в том числе оконными, и помогает считать “условные суммы/счётчики” без <code>CASE WHEN</code>.</li>
+  </ul>
+</div>
+{% endblock %}

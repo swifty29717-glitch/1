@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1>Регистрация</h1>
+
+  <form method="post" class="auth-form">
+    <div class="form-row">
+      <label for="login">Логин</label>
+      <input id="login" name="login" type="text" value="{{ login|default('') }}" required />
+      <div class="muted">3–32 символа: латиница/цифры/underscore/точка</div>
+    </div>
+
+    <div class="form-row">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" value="{{ email|default('') }}" required />
+    </div>
+
+    <div class="form-row">
+      <label for="password">Пароль</label>
+      <input id="password" name="password" type="password" required />
+      <div class="muted">Минимум 8 символов</div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit">Создать аккаунт</button>
+      <a href="{{ url_for('auth.login') }}">Уже есть аккаунт?</a>
+    </div>
+  </form>
+{% endblock %}

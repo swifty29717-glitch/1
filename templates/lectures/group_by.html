@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="lecture">
+  <h1>GROUP BY</h1>
+
+  <p>
+    <code>GROUP BY</code> используется для группировки строк по одному или нескольким столбцам.
+    Обычно применяется вместе с агрегатными функциями (<code>COUNT</code>, <code>SUM</code>, <code>AVG</code>,
+    <code>MIN</code>, <code>MAX</code>), чтобы получить сводную статистику по группам.
+  </p>
+
+  <div class="callout callout--note">
+    <div class="callout__title">Идея простая</div>
+    <p class="muted">
+      Сначала данные делятся на группы по значению(ям) столбцов из <code>GROUP BY</code>, затем для каждой группы считаются агрегаты.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Базовый пример</h2>
+  <p class="muted">
+    Посчитаем количество сотрудников в каждом отделе.
+  </p>
+
+  <pre class="sql"><code>SELECT department, COUNT(*) AS employees_count
+FROM employees
+GROUP BY department;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Пример результата:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>department</th>
+            <th>employees_count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Sales</td><td>3</td></tr>
+          <tr><td>IT</td><td>2</td></tr>
+          <tr><td>HR</td><td>1</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Важное правило SELECT при GROUP BY</h2>
+  <p>
+    Если в запросе есть <code>GROUP BY</code>, то в <code>SELECT</code> можно выводить:
+  </p>
+  <ul>
+    <li>столбцы, которые перечислены в <code>GROUP BY</code>,</li>
+    <li>и/или выражения с агрегатными функциями (<code>COUNT</code>, <code>SUM</code>, ...).</li>
+  </ul>
+
+  <p class="muted">
+    Иначе СУБД не понимает, какое значение вывести для столбца внутри группы.
+    Например, в группе "Sales" несколько разных сотрудников — какой <code>name</code> показывать?
+  </p>
+
+  <div class="callout callout--warning">
+    <div class="callout__title">⚠ Частые ошибки</div>
+    <ul class="mistakes">
+      <li>
+        Выводить в <code>SELECT</code> столбец, которого нет в <code>GROUP BY</code> и который не агрегирован
+        (например, <code>name</code>, <code>salary</code> и т.п.).
+      </li>
+      <li>
+        Пытаться фильтровать агрегаты через <code>WHERE</code> (нужно <code>HAVING</code>).
+      </li>
+      <li>
+        Путать <code>COUNT(*)</code> и <code>COUNT(column)</code> при наличии <code>NULL</code>.
+      </li>
+    </ul>
+  </div>
+
+  <h3>❌ Пример ошибки</h3>
+  <pre class="sql"><code>SELECT department, name, COUNT(*)  -- name не в GROUP BY и не агрегирован
+FROM employees
+GROUP BY department;</code></pre>
+
+  <div class="callout callout--warning">
+    <div class="callout__title">Почему это плохо</div>
+    <p>
+      Такой запрос логически некорректен: для каждого <code>department</code> есть несколько разных <code>name</code>.
+      В большинстве СУБД это будет ошибка.
+      SQLite иногда “пропускает” такое, но результат будет неопределённым (фактически случайным) — так писать не надо.
+    </p>
+  </div>
+
+  <h3>✅ Правильно</h3>
+  <p class="muted">
+    Либо добавляем столбец в <code>GROUP BY</code>, либо агрегируем (в зависимости от того, что ты хочешь получить).
+  </p>
+
+  <pre class="sql"><code>SELECT department, name, COUNT(*) AS cnt
+FROM employees
+GROUP BY department, name;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Пример результата:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>department</th>
+            <th>name</th>
+            <th>cnt</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Sales</td><td>Alice</td><td>1</td></tr>
+          <tr><td>Sales</td><td>Bob</td><td>1</td></tr>
+          <tr><td>Sales</td><td>Carol</td><td>1</td></tr>
+          <tr><td>IT</td><td>Dave</td><td>1</td></tr>
+          <tr><td>IT</td><td>Eve</td><td>1</td></tr>
+          <tr><td>HR</td><td>Mallory</td><td>1</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>Группировка по нескольким столбцам</h2>
+  <p>
+    Группировать можно сразу по нескольким полям. Тогда группы формируются по уникальным комбинациям значений.
+    Это полезно, когда нужно “разрезать” данные сразу по двум (или более) признакам.
+  </p>
+
+  <p class="muted">
+    Например, посчитаем число заказов по отделу и статусу заказа:
+  </p>
+
+  <pre class="sql"><code>SELECT department, status, COUNT(*) AS orders_count
+FROM orders
+GROUP BY department, status
+ORDER BY department, status;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Пример результата:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>department</th>
+            <th>status</th>
+            <th>orders_count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>IT</td><td>done</td><td>4</td></tr>
+          <tr><td>IT</td><td>new</td><td>2</td></tr>
+          <tr><td>Sales</td><td>done</td><td>7</td></tr>
+          <tr><td>Sales</td><td>new</td><td>3</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <hr>
+
+  <h2>WHERE и HAVING: в чём разница</h2>
+
+  <p>
+    Часто путают <code>WHERE</code> и <code>HAVING</code>. Они фильтруют данные на разных этапах:
+  </p>
+  <ul>
+    <li>
+      <code>WHERE</code> фильтрует строки <strong>до</strong> группировки (до <code>GROUP BY</code>).
+      Сначала отбрасываются лишние строки, потом оставшиеся группируются.
+    </li>
+    <li>
+      <code>HAVING</code> фильтрует <strong>группы</strong> <em>после</em> группировки.
+      Его используют, когда условие зависит от агрегатных значений (<code>COUNT</code>, <code>SUM</code>, ...).
+    </li>
+  </ul>
+
+  <div class="callout callout--tip">
+    <div class="callout__title">💡 Практический совет</div>
+    <p>
+      Очень частый паттерн: <code>WHERE</code> — “какие строки участвуют в расчёте”, <code>HAVING</code> — “какие группы оставить”.
+    </p>
+  </div>
+
+  <h3>Фильтрация строк до группировки (WHERE)</h3>
+  <p class="muted">
+    Посчитаем количество сотрудников в отделах, но только тех, у кого зарплата ≥ 1000.
+  </p>
+
+  <pre class="sql"><code>SELECT department, COUNT(*) AS employees_count
+FROM employees
+WHERE salary &gt;= 1000
+GROUP BY department;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Пример результата:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>department</th>
+            <th>employees_count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Sales</td><td>2</td></tr>
+          <tr><td>IT</td><td>2</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>Фильтрация групп после группировки (HAVING)</h3>
+  <p class="muted">
+    Теперь оставим только те отделы, где сотрудников 2 и больше.
+  </p>
+
+  <pre class="sql"><code>SELECT department, COUNT(*) AS employees_count
+FROM employees
+GROUP BY department
+HAVING COUNT(*) &gt;= 2;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Пример результата:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>department</th>
+            <th>employees_count</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Sales</td><td>3</td></tr>
+          <tr><td>IT</td><td>2</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout--warning">
+    <div class="callout__title">Запомни</div>
+    <p>
+      Если условие использует агрегатную функцию (<code>COUNT</code>, <code>SUM</code>, ...),
+      то это почти всегда <code>HAVING</code>, а не <code>WHERE</code>.
+    </p>
+  </div>
+
+  <hr>
+
+  <h2>Частые приёмы с агрегатами</h2>
+
+  <h3>SUM / AVG / MIN / MAX</h3>
+  <p class="muted">
+    Посчитаем общую и среднюю зарплату по отделам, а также минимальную и максимальную.
+  </p>
+
+  <pre class="sql"><code>SELECT
+  department,
+  SUM(salary) AS total_salary,
+  AVG(salary) AS avg_salary,
+  MIN(salary) AS min_salary,
+  MAX(salary) AS max_salary
+FROM employees
+GROUP BY department;</code></pre>
+
+  <div class="result">
+    <div class="result__title">Пример результата:</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>department</th>
+            <th>total_salary</th>
+            <th>avg_salary</th>
+            <th>min_salary</th>
+            <th>max_salary</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>Sales</td><td>3300</td><td>1100</td><td>900</td><td>1400</td></tr>
+          <tr><td>IT</td><td>2600</td><td>1300</td><td>1200</td><td>1400</td></tr>
+          <tr><td>HR</td><td>900</td><td>900</td><td>900</td><td>900</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>COUNT(*) vs COUNT(column)</h3>
+  <ul>
+    <li><code>COUNT(*)</code> считает все строки в группе.</li>
+    <li><code>COUNT(column)</code> считает только строки, где <code>column</code> не <code>NULL</code>.</li>
+  </ul>
+
+  <p class="muted">
+    Это важно, когда в данных встречаются <code>NULL</code> (например, не у всех заполнен телефон или бонус).
+  </p>
+
+  <hr>
+
+  <h2>Порядок выполнения (упрощённо)</h2>
+  <p class="muted">
+    Полезно понимать, в каком порядке “мысленно” обрабатывается запрос:
+  </p>
+
+  <pre class="sql"><code>FROM
+WHERE
+GROUP BY
+HAVING
+SELECT
+ORDER BY
+LIMIT</code></pre>
+
+  <p class="muted">
+    Из этого порядка легко понять:
+  </p>
+  <ul>
+    <li>почему <code>WHERE</code> не видит агрегаты (они появляются только после <code>GROUP BY</code>),</li>
+    <li>почему <code>HAVING</code> отлично подходит для условий по <code>COUNT/SUM/AVG</code>.</li>
+  </ul>
+
+  <hr>
+
+  <h2>Итого</h2>
+  <ul>
+    <li><code>GROUP BY</code> группирует строки по одному или нескольким столбцам.</li>
+    <li>В <code>SELECT</code> при группировке — либо агрегаты, либо столбцы из <code>GROUP BY</code>.</li>
+    <li><code>WHERE</code> фильтрует строки до группировки, <code>HAVING</code> — группы после.</li>
+    <li><code>COUNT(*)</code> считает строки, <code>COUNT(col)</code> — только не-<code>NULL</code> значения.</li>
+  </ul>
+</div>
+{% endblock %}

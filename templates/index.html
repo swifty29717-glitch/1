@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% set title = "SQL Trainer" %}
+
+{% block content %}
+
+  {# =====================
+     1) Hero (first screen)
+     ===================== #}
+  <section class="hero" aria-label="SQL Trainer">
+    <div class="hero__inner">
+      <h1 class="hero__title">Освой SQL на практике — прямо в браузере</h1>
+
+      <p class="hero__subtitle">
+        Реальные SQL-задачи с автопроверкой.<br>
+        Подходит для новичков и подготовки к собеседованиям.
+      </p>
+
+      <ul class="hero__benefits" role="list">
+        <li>✔ Бесплатно</li>
+        <li>✔ Без установки</li>
+        <li>✔ Можно без регистрации</li>
+      </ul>
+
+      <div class="hero__cta">
+        <a class="btn primary" href="{{ url_for('task_page', task_id=start_task_id) }}">🚀 Начать решать задачи</a>
+        <a class="btn secondary" href="#how">Как это работает</a>
+      </div>
+
+      <a class="hero__try" href="#recommended">↓ Попробуй прямо сейчас</a>
+    </div>
+  </section>
+
+
+  {# =====================
+     2) Segmentation
+     ===================== #}
+  <section class="section" aria-label="С чего начать">
+    <h2 class="section__title">С чего лучше начать?</h2>
+
+    <div class="seg-grid">
+      <a class="seg-card" href="{{ url_for('index', level='Easy') }}#catalog">
+        <div class="seg-card__title">🟢 Я новичок в SQL</div>
+        <div class="seg-card__desc">Изучаю SELECT, WHERE, JOIN с нуля</div>
+      </a>
+
+      <a class="seg-card" href="{{ url_for('index', level='Medium') }}#catalog">
+        <div class="seg-card__title">🟡 Готовлюсь к собеседованию</div>
+        <div class="seg-card__desc">Типовые задачи из аналитики и e-commerce</div>
+      </a>
+
+      <a class="seg-card" href="{{ url_for('index', level='Hard') }}#catalog">
+        <div class="seg-card__title">🔵 Уже знаю основы</div>
+        <div class="seg-card__desc">Хочу больше практики и сложных запросов</div>
+      </a>
+    </div>
+
+ 
+  </section>
+
+
+  {# =====================
+     3) How it works
+     ===================== #}
+  <section class="section" id="how" aria-label="Как это работает">
+    <h2 class="section__title">Как проходит обучение</h2>
+
+    <div class="how-grid">
+      <div class="how-card">
+        <div class="how-card__num">1️⃣</div>
+        <div>
+          <div class="how-card__title">Выбираешь задачу</div>
+          <div class="how-card__desc">Короткое описание и пример данных</div>
+        </div>
+      </div>
+
+      <div class="how-card">
+        <div class="how-card__num">2️⃣</div>
+        <div>
+          <div class="how-card__title">Пишешь SQL-запрос</div>
+          <div class="how-card__desc">Прямо в браузере</div>
+        </div>
+      </div>
+
+      <div class="how-card">
+        <div class="how-card__num">3️⃣</div>
+        <div>
+          <div class="how-card__title">Получаешь результат</div>
+          <div class="how-card__desc">Автопроверка + подсказки</div>
+        </div>
+      </div>
+    </div>
+
+   
+  </section>
+
+
+  {# =====================
+     4) Recommended start
+     ===================== #}
+  <section class="section" id="recommended" aria-label="Рекомендуемый старт">
+    <h2 class="section__title">🔥 Рекомендуем начать с этих задач</h2>
+
+    {% if recommended and recommended|length > 0 %}
+      <div class="rec-list">
+        {% for t in recommended %}
+          <a class="rec-item" href="{{ url_for('task_page', task_id=t.id) }}">
+            <span class="badge badge-{{ t.level|lower }}">{{ t.level }}</span>
+            <span class="rec-item__title">{{ t.title }}</span>
+            <span class="rec-item__arrow">→</span>
+          </a>
+        {% endfor %}
+      </div>
+
+      <a class="btn primary" href="{{ url_for('task_page', task_id=start_task_id) }}">Начать с первой задачи</a>
+    {% else %}
+      <p class="muted">Пока не нашли задачи уровня Easy. Можно начать с каталога ниже.</p>
+    {% endif %}
+  </section>
+
+
+  {# =====================
+     5) Catalog (unchanged)
+     ===================== #}
+  <section class="section" id="catalog" aria-label="Каталог задач">
+    <h2 class="section__title">Все задачи по SQL</h2>
+    <p class="muted">Выберите задачу и напишите SQL-запрос прямо в браузере.</p>
+
+    <form class="filter" method="get" action="{{ url_for('index') }}">
+      <label>
+        Сложность:
+        <select name="level" onchange="this.form.submit()">
+          <option value="" {% if not selected_level %}selected{% endif %}>Все</option>
+
+          {# LEVELS приходит из app.py через context_processor #}
+          {% for lvl in LEVELS %}
+            <option value="{{ lvl }}" {% if selected_level == lvl %}selected{% endif %}>{{ lvl }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <noscript>
+        <button type="submit" class="secondary">Применить</button>
+      </noscript>
+    </form>
+
+    <div class="task-list">
+      {% for t in tasks %}
+        <a class="task-card" href="{{ url_for('task_page', task_id=t.id) }}">
+          <div class="task-card__top">
+            <h3 class="task-card__title">{{ t.title }}</h3>
+
+            {# t.level = Easy/Medium/Hard/Advanced #}
+            <div class="badge-row">
+              <span class="badge badge-{{ t.level|lower }}">{{ t.level }}</span>
+
+              {% if progress_map and progress_map.get(t.id) and progress_map.get(t.id).solved %}
+                <span class="badge badge-solved">Solved</span>
+              {% elif progress_map and progress_map.get(t.id) %}
+                <span class="badge badge-attempted">Tried</span>
+              {% endif %}
+            </div>
+          </div>
+
+          <p class="task-card__desc">{{ t.short_desc }}</p>
+        </a>
+      {% endfor %}
+    </div>
+
+    {% if tasks|length == 0 %}
+      <p class="muted">Задач с таким уровнем сложности пока нет.</p>
+    {% endif %}
+  </section>
+
+
+  {# =====================
+     6) Social proof
+     ===================== #}
+  <section class="section" aria-label="Почему этот тренажёр">
+    <h2 class="section__title">Почему этот тренажёр</h2>
+
+    <ul class="checks" role="list">
+      <li>✔ Практика, а не теория</li>
+      <li>✔ Задачи как на реальной работе</li>
+      <li>✔ Частые темы SQL-собеседований</li>
+    </ul>
+
+    <p class="muted">Уже используют для подготовки аналитики и backend-разработчики.</p>
+  </section>
+
+
+  {# =====================
+     7) Final CTA
+     ===================== #}
+  <section class="final-cta" aria-label="Начать">
+    <h2 class="final-cta__title">Готов попробовать?</h2>
+    <p class="muted">Начни решать SQL-задачи прямо сейчас</p>
+    <a class="btn primary" href="{{ url_for('task_page', task_id=start_task_id) }}">🚀 Начать бесплатно</a>
+  </section>
+
+{% endblock %}

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ title or "SQL Trainer" }}</title>
+  
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=3">
+
+</head>
+<body>
+  <header class="header">
+    <div class="container header__inner">
+      <a class="logo" href="{{ url_for('index') }}">SQL Trainer</a>
+      <nav class="nav">
+        <button type="button" class="theme-toggle" id="themeToggle" aria-label="Переключить тему">🌙</button>
+        <a href="{{ url_for('lectures_index') }}">Лекции</a>
+        <a href="{{ url_for('about') }}">О проекте</a>
+
+        {% if current_user.is_authenticated %}
+          <a href="{{ url_for('profile') }}">Профиль</a>
+          <span class="nav-progress">📈 {{ progress_solved }}/{{ progress_total }} ({{ progress_percent }}%)</span>
+          <span class="nav-user">👤 {{ current_user.login }}</span>
+          <form method="post" action="{{ url_for('auth.logout') }}" class="nav-logout">
+            <button type="submit" class="secondary">Выйти</button>
+          </form>
+        {% else %}
+          <a href="{{ url_for('auth.login') }}">Войти</a>
+          {# Регистрация остаётся доступной по URL и со страницы входа, но не перегружает шапку #}
+        {% endif %}
+
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-list">
+          {% for category, message in messages %}
+            <div class="flash flash--{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <small>© 2026 SQL Trainer</small>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const root = document.documentElement;
+      const btn = document.getElementById('themeToggle');
+
+      function apply(theme) {
+        if (theme === 'dark') {
+          root.setAttribute('data-theme', 'dark');
+          btn.textContent = '☀️';
+        } else {
+          root.removeAttribute('data-theme');
+          btn.textContent = '🌙';
+        }
+      }
+
+      // 1) stored preference
+      const stored = localStorage.getItem('theme');
+      if (stored === 'dark' || stored === 'light') {
+        apply(stored);
+      } else {
+        // 2) system preference
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        apply(prefersDark ? 'dark' : 'light');
+      }
+
+      btn.addEventListener('click', function () {
+        const isDark = root.getAttribute('data-theme') === 'dark';
+        const next = isDark ? 'light' : 'dark';
+        localStorage.setItem('theme', next);
+        apply(next);
+      });
+    })();
+  </script>
+</body>
+
+</html>

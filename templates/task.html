@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% set title = task.title %}
+{% block content %}
+  <div class="task-header">
+    <h1>{{ task.title }}</h1>
+    <div class="badge-row">
+      <span class="badge badge-{{ task.level|lower }}">{{ task.level }}</span>
+
+      {% if current_user.is_authenticated %}
+        {% if progress and progress.solved %}
+          <span class="badge badge-solved">Solved</span>
+        {% elif progress %}
+          <span class="badge badge-attempted">Tried</span>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+
+  {% if current_user.is_authenticated %}
+    <p class="muted" style="margin-top: 6px;">
+      {% if progress %}
+        Попыток: {{ progress.attempts }}
+        {% if progress.solved_at %} · Решено: {{ progress.solved_at }}{% endif %}
+      {% else %}
+        Пока нет попыток по этой задаче.
+      {% endif %}
+    </p>
+  {% else %}
+    <p class="muted" style="margin-top: 6px;">
+      Войдите, чтобы сохранялся прогресс.
+    </p>
+  {% endif %}
+
+  <p style="white-space: pre-line;">{{ task.full_desc }}</p>
+
+  <h3>Структура таблиц</h3>
+  <pre class="code">{{ task.dataset_sql | trim }}</pre>
+
+  <h3>Пример данных</h3>
+
+  {# sample_data is passed from app.py: db.get_sample_data(task_id, limit=5) #}
+  {% if sample_data %}
+    {% for table_name, data in sample_data.items() %}
+      <h4 style="margin: 12px 0 8px;">{{ table_name }}</h4>
+
+      {% if data.rows and data.columns %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                {% for c in data.columns %}
+                  <th>{{ c }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in data.rows %}
+                <tr>
+                  {% for c in data.columns %}
+                    <td>{{ r[c] }}</td>
+                  {% endfor %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <p class="muted" style="margin-top: 6px;">Показано строк: {{ data.rows|length }} (LIMIT 5)</p>
+      {% else %}
+        <p class="muted">Таблица пустая.</p>
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <p class="muted">Нет данных для отображения.</p>
+  {% endif %}
+
+  <h3 id="editor">Ваш SQL</h3>
+
+  {% if verdict is not none %}
+    {% if verdict %}
+      <div class="flash flash--ok">✅ Решение верное. {{ verdict_msg }}</div>
+    {% else %}
+      <div class="flash flash--bad">❌ Решение неверное. {{ verdict_msg }}</div>
+    {% endif %}
+  {% endif %}
+
+  {% if error %}
+    <div class="alert">{{ error }}</div>
+  {% endif %}
+
+  <form method="post" class="sql-form" action="#editor">
+    <textarea name="sql" rows="8" placeholder="Например: SELECT ...">{{ sql }}</textarea>
+
+    <div class="form-actions">
+      <button type="submit" name="action" value="run">Выполнить</button>
+    </div>
+  </form>
+
+  <h3>Результат</h3>
+
+  {% if columns %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            {% for c in columns %}
+              <th>{{ c }}</th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in rows %}
+            <tr>
+              {% for c in columns %}
+                <td>{{ r[c] }}</td>
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted">Показано строк: {{ rows|length }}</p>
+  {% else %}
+    <p class="muted">Результат пуст (0 строк).</p>
+  {% endif %}
+{% endblock %}
